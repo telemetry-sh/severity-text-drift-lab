@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="An interactive OpenTelemetry lab showing how exact SeverityText filters hide valid error logs."
+    />
+    <title>Severity Text Drift Lab — telemetry.sh</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="top-rule" aria-hidden="true">
+      <span>ERROR</span><span>ERR</span><span>SEVERE</span><span>FATAL</span>
+      <span>ERROR</span><span>ERR</span><span>SEVERE</span><span>FATAL</span>
+    </div>
+
+    <header class="site-header">
+      <a class="wordmark" href="https://telemetry.sh" rel="noreferrer">
+        telemetry<span>.sh</span>
+      </a>
+      <div class="issue">
+        <span>field note no. 101</span>
+        <span>otel / logs</span>
+      </div>
+      <a
+        class="repo-link"
+        href="https://github.com/telemetry-sh/severity-text-drift-lab"
+        >view source ↗</a
+      >
+    </header>
+
+    <main>
+      <section class="hero page-grid" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">the label looked right. the query was wrong.</p>
+          <h1 id="hero-title">
+            One error level.<br />
+            <em>Five spellings.</em>
+          </h1>
+          <p class="dek">
+            OpenTelemetry preserves a source’s original
+            <code>SeverityText</code>. An exact <code>"ERROR"</code> filter
+            quietly drops <code>ERR</code>, <code>SEVERE</code>,
+            <code>FATAL</code>, and records with no label—even when their
+            normalized severity says they are errors.
+          </p>
+          <a class="jump-link" href="#experiment">run the field test ↓</a>
+        </div>
+
+        <div class="hero-finding" aria-live="polite">
+          <p class="finding-label">text-only query</p>
+          <div class="finding-ratio">
+            <strong id="hero-visible">420</strong>
+            <span>of <b id="hero-total">1,200</b> errors found</span>
+          </div>
+          <div class="finding-meter" aria-hidden="true">
+            <span id="hero-meter"></span>
+          </div>
+          <p class="finding-note">
+            <span id="hero-hidden">780</span> valid error records are invisible.
+          </p>
+        </div>
+
+        <div class="label-field" aria-label="Equivalent source severity labels">
+          <span class="label label-error">ERROR</span>
+          <span class="label label-err">ERR</span>
+          <span class="label label-severe">SEVERE</span>
+          <span class="label label-fatal">FATAL</span>
+          <span class="label label-empty">∅ text</span>
+          <div class="annotation">all normalize to error or higher →</div>
+        </div>
+      </section>
+
+      <section class="premise">
+        <div class="page-grid premise-grid">
+          <p class="section-index">01 / the premise</p>
+          <blockquote>
+            Severity text is <em>what the source said</em>. Severity number is
+            <em>what it meant</em>.
+          </blockquote>
+          <p>
+            The OpenTelemetry data model maps ERROR to 17–20 and FATAL to
+            21–24. Comparisons belong on that normalized number; text remains
+            useful for display and source fidelity.
+          </p>
+        </div>
+      </section>
+
+      <section class="experiment page-grid" id="experiment">
+        <div class="section-heading">
+          <p class="section-index">02 / the experiment</p>
+          <h2>Change the mix.<br />Watch the blind spot.</h2>
+        </div>
+
+        <form class="controls" id="controls">
+          <label>
+            <span>Total log records</span>
+            <output id="totalLogsOutput" for="totalLogs">100,000</output>
+            <input
+              id="totalLogs"
+              name="totalLogs"
+              type="range"
+              min="1000"
+              max="500000"
+              step="1000"
+              value="100000"
+            />
+          </label>
+          <label>
+            <span>Error rate</span>
+            <output id="errorRateOutput" for="errorRate">1.20%</output>
+            <input
+              id="errorRate"
+              name="errorRateBasisPoints"
+              type="range"
+              min="0"
+              max="1000"
+              step="10"
+              value="120"
+            />
+          </label>
+          <label>
+            <span>Errors spelled “ERROR”</span>
+            <output id="canonicalOutput" for="canonical">35%</output>
+            <input
+              id="canonical"
+              name="canonicalTextBasisPoints"
+              type="range"
+              min="0"
+              max="10000"
+              step="100"
+              value="3500"
+            />
+          </label>
+        </form>
+
+        <div class="comparison" aria-live="polite">
+          <article class="strategy strategy-text">
+            <div class="strategy-head">
+              <span class="stamp stamp-fail">incomplete</span>
+              <span>text-only</span>
+            </div>
+            <code>severity_text == "ERROR"</code>
+            <div class="strategy-value">
+              <strong id="text-visible">420</strong>
+              <span>errors visible</span>
+            </div>
+            <dl>
+              <div>
+                <dt>coverage</dt>
+                <dd id="text-coverage">35.0%</dd>
+              </div>
+              <div>
+                <dt>hidden</dt>
+                <dd id="text-hidden">780</dd>
+              </div>
+            </dl>
+          </article>
+
+          <div class="versus" aria-hidden="true">vs.</div>
+
+          <article class="strategy strategy-number">
+            <div class="strategy-head">
+              <span class="stamp stamp-pass">complete</span>
+              <span>number-aware</span>
+            </div>
+            <code>severity_number &gt;= 17</code>
+            <div class="strategy-value">
+              <strong id="number-visible">1,200</strong>
+              <span>errors visible</span>
+            </div>
+            <dl>
+              <div>
+                <dt>coverage</dt>
+                <dd>100.0%</dd>
+              </div>
+              <div>
+                <dt>hidden</dt>
+                <dd>0</dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section class="ledger">
+        <div class="page-grid">
+          <div class="section-heading compact">
+            <p class="section-index">03 / source ledger</p>
+            <h2>Same signal,<br />different labels.</h2>
+          </div>
+          <div class="ledger-table" role="table" aria-label="Severity variants">
+            <div class="ledger-row ledger-header" role="row">
+              <span role="columnheader">source text</span>
+              <span role="columnheader">normalized no.</span>
+              <span role="columnheader">records</span>
+              <span role="columnheader">text query</span>
+            </div>
+            <div id="variantRows"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="signals page-grid">
+        <div class="section-heading">
+          <p class="section-index">04 / telemetry evidence</p>
+          <h2>Ask the field<br />that can compare.</h2>
+        </div>
+        <div class="signal-grid">
+          <article>
+            <p class="signal-tag">logs</p>
+            <h3>Keep both fields</h3>
+            <pre><code>SeverityText: "SEVERE"
+SeverityNumber: 17
+lab.population.count: <span id="severe-count">240</span></code></pre>
+          </article>
+          <article>
+            <p class="signal-tag">metrics</p>
+            <h3>Measure the gap</h3>
+            <pre><code>lab.log.errors.hidden{
+  lab.filter.strategy="text-only"
+} <span id="metric-hidden">780</span></code></pre>
+          </article>
+          <article>
+            <p class="signal-tag">traces</p>
+            <h3>Compare strategies</h3>
+            <pre><code>span: evaluate severity filter
+lab.filter.strategy: number-aware
+lab.error_coverage: 1</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="takeaway">
+        <div class="page-grid takeaway-grid">
+          <p class="section-index">05 / the fix</p>
+          <h2>
+            Display the text.<br />
+            <span>Query the number.</span>
+          </h2>
+          <div>
+            <p>
+              Preserve <code>SeverityText</code> for operators. Build severity
+              ranges, alerts, and cross-source comparisons from
+              <code>SeverityNumber</code>.
+            </p>
+            <a href="/api/telemetry">inspect the OTLP-shaped evidence →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer page-grid">
+      <div>
+        <p class="footer-title">A telemetry.sh field lab</p>
+        <p id="runtime-proof">Loading executable model proof…</p>
+      </div>
+      <div class="footer-links">
+        <a href="/api/simulate">model JSON</a>
+        <a href="/api/telemetry">OTLP JSON</a>
+        <a href="https://telemetry.sh">telemetry.sh ↗</a>
+      </div>
+    </footer>
+
+    <noscript>This interactive lab requires JavaScript.</noscript>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

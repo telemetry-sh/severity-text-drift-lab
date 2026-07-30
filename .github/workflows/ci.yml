@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install Vim
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes vim
+      - run: vim --version | head -1
+      - run: npm ci
+      - run: npm run check
+      - run: docker build --tag severity-text-drift-lab .

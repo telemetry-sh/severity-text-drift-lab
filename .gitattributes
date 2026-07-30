@@ -1,0 +1,4 @@
+public/** linguist-vendored
+src/** linguist-vendored
+tests/** linguist-vendored
+*.md linguist-documentation

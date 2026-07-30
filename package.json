@@ -1,0 +1,16 @@
+{
+  "name": "severity-text-drift-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An interactive OpenTelemetry lab showing why SeverityText is a display value, not a normalized filter key.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "check": "npm test && node --check src/server.js && node --check public/app.js"
+  },
+  "license": "MIT"
+}
