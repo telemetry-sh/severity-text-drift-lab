@@ -1,8 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -70,31 +76,49 @@ function runtimeProof(binary) {
 export function runModel(raw = {}) {
   const input = normalizeInputs(raw);
   const binary = vimBinary();
-  const result = spawnSync(
-    binary,
-    ["-Nu", "NONE", "-n", "-es", "-S", MODEL_PATH],
-    {
-      cwd: ROOT,
-      encoding: "utf8",
-      maxBuffer: 4 * 1024 * 1024,
-      env: {
-        ...process.env,
-        LAB_TOTAL_LOGS: String(input.totalLogs),
-        LAB_ERROR_RATE_BASIS_POINTS: String(input.errorRateBasisPoints),
-        LAB_CANONICAL_TEXT_BASIS_POINTS: String(
-          input.canonicalTextBasisPoints,
-        ),
-      },
-    },
+  const outputDirectory = mkdtempSync(
+    join(tmpdir(), "severity-text-drift-"),
   );
+  const outputPath = join(outputDirectory, "model.json");
 
-  if (result.status !== 0) {
-    throw new Error(result.stderr || "Vim Script model evaluation failed.");
+  try {
+    const result = spawnSync(
+      binary,
+      ["-Nu", "NONE", "-n", "-es", "-S", MODEL_PATH],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 4 * 1024 * 1024,
+        env: {
+          ...process.env,
+          LAB_TOTAL_LOGS: String(input.totalLogs),
+          LAB_ERROR_RATE_BASIS_POINTS: String(input.errorRateBasisPoints),
+          LAB_CANONICAL_TEXT_BASIS_POINTS: String(
+            input.canonicalTextBasisPoints,
+          ),
+          LAB_OUTPUT_PATH: outputPath,
+        },
+      },
+    );
+
+    if (result.status !== 0) {
+      const detail = [result.stderr, result.stdout]
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      throw new Error(
+        detail
+          ? `Vim Script model evaluation failed: ${detail}`
+          : "Vim Script model evaluation failed.",
+      );
+    }
+
+    const model = JSON.parse(readFileSync(outputPath, "utf8"));
+    model.runtime = runtimeProof(binary);
+    return model;
+  } finally {
+    rmSync(outputDirectory, { recursive: true, force: true });
   }
-
-  const model = JSON.parse(result.stdout);
-  model.runtime = runtimeProof(binary);
-  return model;
 }
 
 function attribute(key, value) {

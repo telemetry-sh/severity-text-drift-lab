@@ -86,5 +86,10 @@ let s:result = {
       \ )
       \ }
 
-call writefile([json_encode(s:result)], '/dev/stdout')
+let s:output_path = getenv('LAB_OUTPUT_PATH')
+if empty(s:output_path)
+  let s:output_path = '/dev/stdout'
+endif
+
+call writefile([json_encode(s:result)], s:output_path)
 qa!
